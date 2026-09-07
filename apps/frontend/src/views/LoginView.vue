@@ -1,13 +1,61 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { login, register } from '../api/auth'
 
 type AuthMode = 'login' | 'register'
+
+const username = ref('')
+const password = ref('')
+const email = ref('')
+const loading = ref(false)
+const error = ref('')
+const errorText = ref('')
 
 const authMode = ref<AuthMode>('login')
 const isRegister = computed(() => authMode.value === 'register')
 
+function showError(message: string) {
+  errorText.value = message
+  error.value = message
+}
+
 function setAuthMode(mode: AuthMode) {
   authMode.value = mode
+  error.value = ''
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]{3,}@[^\s@]{3,}\.[^\s@]+$/.test(email)
+}
+
+function handleSubmit() {
+  if (!username.value.trim() || !password.value) {
+    showError('Username and password are required')
+    return
+  }
+
+  if (isRegister.value && !isValidEmail(email.value)) {
+    showError('*Invalid email address')
+    return
+  }
+
+  error.value = ''
+
+  if (isRegister.value) {
+    handleRegister()
+  } else {
+    handleLogin()
+  }
+}
+
+async function handleLogin() {
+  const response = await login(username.value, password.value)
+  console.log(response)
+}
+
+async function handleRegister() {
+  const response = await register(username.value, password.value, email.value)
+  console.log(response)
 }
 </script>
 
@@ -16,7 +64,8 @@ function setAuthMode(mode: AuthMode) {
     <form
       class="w-full max-w-md rounded-2xl border border-line bg-surface p-8 shadow-xl"
       autocomplete="on"
-      @submit.prevent
+      novalidate
+      @submit.prevent="handleSubmit"
     >
       <div class="mb-8 text-center">
         <div
@@ -93,31 +142,41 @@ function setAuthMode(mode: AuthMode) {
       </div>
 
       <div class="flex flex-col gap-4">
-        <div class="flex flex-col gap-1.5">
-          <label for="username" class="text-sm font-medium text-fg">Username</label>
+        <div class="relative">
           <input
             id="username"
+            v-model="username"
             name="username"
             type="text"
             autocomplete="username"
-            required
-            placeholder="Enter your username"
-            class="rounded-lg border border-line bg-surface-raised px-3 py-2.5 text-fg placeholder:text-fg-subtle outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-accent/30"
+            placeholder=" "
+            class="peer w-full rounded-lg border border-line bg-surface-raised px-3 pt-5 pb-1.5 text-fg placeholder-transparent outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-accent/30"
           />
+          <label
+            for="username"
+            class="pointer-events-none absolute left-3 top-1/2 origin-left -translate-y-1/2 text-sm text-fg-subtle transition-all duration-200 ease-out peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-brand peer-not-placeholder-shown:top-2 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:text-xs"
+          >
+            Username
+          </label>
         </div>
 
         <div class="flex flex-col">
-          <div class="flex flex-col gap-1.5">
-            <label for="password" class="text-sm font-medium text-fg">Password</label>
+          <div class="relative">
             <input
               id="password"
+              v-model="password"
               name="password"
               type="password"
               :autocomplete="isRegister ? 'new-password' : 'current-password'"
-              required
-              placeholder="Enter your password"
-              class="rounded-lg border border-line bg-surface-raised px-3 py-2.5 text-fg placeholder:text-fg-subtle outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-accent/30"
+              placeholder=" "
+              class="peer w-full rounded-lg border border-line bg-surface-raised px-3 pt-5 pb-1.5 text-fg placeholder-transparent outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-accent/30"
             />
+            <label
+              for="password"
+              class="pointer-events-none absolute left-3 top-1/2 origin-left -translate-y-1/2 text-sm text-fg-subtle transition-all duration-200 ease-out peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-brand peer-not-placeholder-shown:top-2 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:text-xs"
+            >
+              Password
+            </label>
           </div>
 
           <div
@@ -126,32 +185,54 @@ function setAuthMode(mode: AuthMode) {
           >
             <div class="min-h-0 overflow-hidden">
               <div
-                class="flex flex-col gap-1.5 pt-4 transition-opacity duration-300 ease-out"
+                class="pt-4 transition-opacity duration-300 ease-out"
                 :class="isRegister ? 'opacity-100' : 'opacity-0'"
               >
-                <label for="confirmPassword" class="text-sm font-medium text-fg">
-                  Confirm password
-                </label>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  autocomplete="new-password"
-                  :required="isRegister"
-                  :disabled="!isRegister"
-                  :tabindex="isRegister ? 0 : -1"
-                  placeholder="Repeat your password"
-                  class="rounded-lg border border-line bg-surface-raised px-3 py-2.5 text-fg placeholder:text-fg-subtle outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-accent/30 disabled:opacity-100"
-                />
+                <div class="relative">
+                  <input
+                    id="email"
+                    v-model="email"
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    :disabled="!isRegister"
+                    :tabindex="isRegister ? 0 : -1"
+                    placeholder=" "
+                    class="peer w-full rounded-lg border border-line bg-surface-raised px-3 pt-5 pb-1.5 text-fg placeholder-transparent outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-accent/30 disabled:opacity-100"
+                  />
+                  <label
+                    for="email"
+                    class="pointer-events-none absolute left-3 top-1/2 origin-left -translate-y-1/2 text-sm text-fg-subtle transition-all duration-200 ease-out peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-brand peer-not-placeholder-shown:top-2 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:text-xs"
+                  >
+                    Email
+                  </label>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
+      <div
+        class="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
+        :class="error ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
+      >
+        <div class="min-h-0 overflow-hidden">
+          <p
+            class="pt-4 text-sm text-danger transition-opacity duration-300 ease-out"
+            :class="error ? 'opacity-100' : 'opacity-0'"
+            role="alert"
+            :aria-hidden="!error"
+          >
+            {{ error || errorText }}
+          </p>
+        </div>
+      </div>
+
       <button
         type="submit"
         class="mt-6 w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-canvas transition-colors hover:bg-brand-hover"
+        :disabled="loading"
       >
         <span class="grid">
           <span
