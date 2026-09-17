@@ -23,7 +23,7 @@ export class AuthService {
   ) {}
 
   async login(data: LoginDto): Promise<LoginResult> {
-    const user = await this.usersService.findByUsername(data.username);
+    const user = await this.usersService.findByEmail(data.email);
 
     const hashedPassword = user?.password ?? DUMMY_BCRYPT_HASH;
 
@@ -40,25 +40,18 @@ export class AuthService {
       60 * 60 * 4,
     );
 
+    const { password: _password, ...userWithoutPassword } = user;
+
     return {
-      user: {
-        id: user.id,
-        username: user.username,
-      },
+      user: userWithoutPassword,
       sessionId,
     };
   }
 
   async register(data: RegisterDto): Promise<UserWithoutPassword> {
-    const [emailExists, usernameExists] = await Promise.all([
-      this.usersService.emailExists(data.email),
-      this.usersService.usernameExists(data.username),
-    ]);
+    const emailExists = await this.usersService.emailExists(data.email);
     if (emailExists) {
       throw new ConflictException('Email is already in use');
-    }
-    if (usernameExists) {
-      throw new ConflictException('Username is taken');
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 12);
@@ -73,17 +66,10 @@ export class AuthService {
         error instanceof Error &&
         'code' in error &&
         error.code === '23505' &&
-        'constraint' in error
+        'constraint' in error &&
+        error.constraint === 'users_email_key'
       ) {
-        const field =
-          error.constraint === 'users_email_key'
-            ? 'Email'
-            : error.constraint === 'users_username_key'
-              ? 'Username'
-              : null;
-        if (field) {
-          throw new ConflictException(`${field} is already in use`);
-        }
+        throw new ConflictException('Email is already in use');
       }
       throw error;
     }

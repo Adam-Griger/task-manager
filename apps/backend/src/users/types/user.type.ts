@@ -1,13 +1,16 @@
 export type User = {
   id: number;
-  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
   password: string;
 };
 
 export type UserWithoutPassword = Omit<User, 'password'>;
 
 export type CreateUser = {
-  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
 };

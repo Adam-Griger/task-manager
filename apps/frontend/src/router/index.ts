@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import AppLayout from '../layouts/AppLayout.vue'
+import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -9,10 +10,12 @@ const router = createRouter({
       path: '/',
       name: 'login',
       component: LoginView,
+      meta: { guestOnly: true },
     },
     {
       path: '/app',
       component: AppLayout,
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
@@ -41,6 +44,20 @@ const router = createRouter({
       ],
     },
   ],
+})
+
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+  const guestOnly = to.matched.some((record) => record.meta.guestOnly)
+
+  if (requiresAuth && !auth.isAuthenticated) {
+    return { name: 'login' }
+  }
+
+  if (guestOnly && auth.isAuthenticated) {
+    return { name: 'inbox' }
+  }
 })
 
 export default router

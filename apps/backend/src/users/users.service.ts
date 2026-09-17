@@ -2,14 +2,16 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { CreateUser, User, UserWithoutPassword } from './types/user.type';
 import { DatabaseService } from '../database/database.service';
 
+const USER_COLUMNS = `id, first_name AS "firstName", last_name AS "lastName", email`;
+
 @Injectable()
 export class UsersService {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  async findByUsername(username: string): Promise<User | undefined> {
+  async findByEmail(email: string): Promise<User | undefined> {
     const result = await this.databaseService.query<User>(
-      `SELECT id, username, password FROM users WHERE username = $1`,
-      [username.trim().toLowerCase()],
+      `SELECT ${USER_COLUMNS}, password FROM users WHERE email = $1`,
+      [email.trim().toLowerCase()],
     );
 
     const row: unknown = result.rows[0];
@@ -18,11 +20,12 @@ export class UsersService {
 
   async createUser(data: CreateUser): Promise<UserWithoutPassword> {
     const result = await this.databaseService.query<UserWithoutPassword>(
-      `INSERT INTO users (username, email, password)
-       VALUES ($1, $2, $3)
-       RETURNING id, username`,
+      `INSERT INTO users (first_name, last_name, email, password)
+       VALUES ($1, $2, $3, $4)
+       RETURNING ${USER_COLUMNS}`,
       [
-        data.username.trim().toLowerCase(),
+        data.firstName.trim().toUpperCase(),
+        data.lastName.trim().toUpperCase(),
         data.email.trim().toLowerCase(),
         data.password,
       ],
@@ -38,7 +41,7 @@ export class UsersService {
 
   async findById(id: number): Promise<UserWithoutPassword | undefined> {
     const result = await this.databaseService.query<UserWithoutPassword>(
-      `SELECT id, username FROM users WHERE id = $1`,
+      `SELECT ${USER_COLUMNS} FROM users WHERE id = $1`,
       [id],
     );
 
@@ -64,17 +67,6 @@ export class UsersService {
          SELECT 1 FROM users WHERE email = $1
        ) AS exists`,
       [email.trim().toLowerCase()],
-    );
-
-    return result.rows[0].exists;
-  }
-
-  async usernameExists(username: string): Promise<boolean> {
-    const result = await this.databaseService.query<{ exists: boolean }>(
-      `SELECT EXISTS (
-         SELECT 1 FROM users WHERE username = $1
-       ) AS exists`,
-      [username.trim().toLowerCase()],
     );
 
     return result.rows[0].exists;
